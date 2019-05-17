@@ -4,10 +4,35 @@
 import redis
 import os
 import threadpool
+import osproc
+import json
 
-proc run(task: string) {.thread.} =
-    os.sleep(1000)
-    echo task
+
+proc run(task:string, redis_client:redis.Redis) {.thread.} =
+    ## Running task and return result to redis
+    var tasknode: json.JsonNode = json.parseJson(task)
+    let
+        lang: string = tasknode["language"].getStr
+        input: string = tasknode["input"].getStr
+        code: string = tasknode["code"].getStr
+
+    var
+        output: string
+        err: int
+        status: string
+
+    (output, err) = osproc.execCmdEx("echo \"" & input & "\" | " & "docker run akapen/" & lang & " \"" & code & "\"")
+
+    if err != 0:
+        status = "RE"
+    # elif output != tasknode["assert"].getStr:
+        # status = "WA"
+    else:
+        status = "AC"
+    
+    tasknode["status"] = %* status
+    tasknode["output"] = %* output
+    let redis_result = redis_client.lPush("taskresults", tasknode.pretty)
 
 proc main(): void =
     let redis_client: redis.Redis = redis.open()  # redis client
@@ -20,7 +45,8 @@ proc main(): void =
         let task = redis_client.rPop("taskqueue")  # pop task (json)
         
         if task != redis.redisNil:
-            threadpool.spawn run(task)
+            # spawn new thread
+            threadpool.spawn run(task, redis_client)
         else:
             # if queue is empty, sleep for performance
             os.sleep(1000)
