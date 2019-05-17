@@ -3,10 +3,7 @@
 # This software is released under the MIT License.
 # https://opensource.org/licenses/MIT
 
-
-FROM linuxbrew/brew
-
-RUN brew install python3 gcc
+FROM python:3.7.3-slim-stretch
 
 COPY ./requirements.txt /
 
