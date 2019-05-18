@@ -28,6 +28,7 @@ proc run(task:string, redis_client:redis.Redis) {.thread.} =
             options={poUsePath}
         )
     p.inputStream.write(input)
+    p.inputStream.close()
 
     if p.running:
         while true:
