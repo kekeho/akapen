@@ -66,8 +66,8 @@ proc run(task:string, redis_client:redis.Redis): void {.thread.} =
 
     if err.len != 0:
         status = "RE"
-    # elif output != tasknode["assert"].getStr:
-        # status = "WA"
+    elif output != tasknode["assert"].getStr:
+        status = "WA"
     else:
         status = "AC"
     
