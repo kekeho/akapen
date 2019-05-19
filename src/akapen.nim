@@ -8,12 +8,14 @@ import osproc
 import json
 import strutils
 import streams
+import utils
 
 
-proc compile(task: string, redis_client: redis.Redis) {.thread.} =
+proc compile(task: string, redis_client: redis.Redis): void {.thread.} =
+    # Generate binary from code.
+
     let PWD = os.getCurrentDir()
 
-    # Generate binary from code.
     var tasknode: json.JsonNode = json.parseJson(task)
     let
         lang: string = tasknode["language"].getStr
@@ -25,22 +27,10 @@ proc compile(task: string, redis_client: redis.Redis) {.thread.} =
         err: string
         status: string
     
-    let BINARY_CHACHE_DIR = PWD & "/worker/" & lang & "/bin_cache"
-    
-    let p: osproc.Process = osproc.startProcess("docker",
-            args=["run", "-i", "-v", BINARY_CHACHE_DIR & ":/bin_cache",
-                  "akapen/" & lang, "build", code, uuid],
-            options={poUsePath}
-        )
-    
-    if p.running:
-        while true:
-            if not p.running:
-                break
-    
-    output = p.outputStream.readAll()
-    err = p.errorStream.readAll()
-    p.close()
+    let BINARY_CACHE_DIR = PWD & "/worker/" & lang & "/bin_cache"
+    let args = @["-i", "-v", BINARY_CACHE_DIR & ":/bin_cache", "akapen/" & lang, "build", code, uuid]
+
+    (output, err) = utils.docker_run(args)
 
     if err.len > 0:
         status = "CE"
@@ -55,10 +45,10 @@ proc compile(task: string, redis_client: redis.Redis) {.thread.} =
         let redis_result = redis_client.lPush("run_queue", tasknode.pretty)
 
 
-proc run(task:string, redis_client:redis.Redis) {.thread.} =
+proc run(task:string, redis_client:redis.Redis): void {.thread.} =
+    ## Running task and return result to redis
     let PWD = os.getCurrentDir()
 
-    ## Running task and return result to redis
     var tasknode: json.JsonNode = json.parseJson(task)
     let
         lang: string = tasknode["language"].getStr
@@ -70,24 +60,9 @@ proc run(task:string, redis_client:redis.Redis) {.thread.} =
         err: string
         status: string
     
-    let BINARY_CHACHE_DIR = PWD & "/worker/" & lang & "/bin_cache"
+    let BINARY_CACHE_DIR = PWD & "/worker/" & lang & "/bin_cache"
 
-    let p: osproc.Process = osproc.startProcess("docker",
-            args=["run", "-i", "-v", BINARY_CHACHE_DIR & ":/bin_cache",
-                  "akapen/$#" % [lang], "run", uuid], 
-            options={poUsePath}
-        )
-    p.inputStream.write(input)
-    p.inputStream.close()
-
-    if p.running:
-        while true:
-            if not p.running:
-                break
-    output = p.outputStream.readAll()
-    err = p.errorStream.readAll()
-
-    p.close()
+    (output, err) = utils.docker_run(@["-i", "-v", BINARY_CACHE_DIR & ":/bin_cache", "akapen/$#" % [lang], "run", uuid], input)
 
     if err.len != 0:
         status = "RE"
