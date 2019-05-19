@@ -3,6 +3,7 @@ import streams
 import sequtils
 
 type status* = enum
+    CD = "Compiled"  # Waiting execute
     AC = "AC",  # Accepted
     WA = "WA",  # Wrong Answer
     TLE = "TLE",  # Time Limit Exceeded

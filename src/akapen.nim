@@ -40,7 +40,7 @@ proc compile(task: string, redis_client: redis.Redis): void {.thread.} =
     (output, err) = utils.docker_run(args)
 
     # Add run queue (or results when CE)
-    tasknode["status"] = %* status
+    tasknode["status"] = %* utils.status.CD
     tasknode["output"] = %* output
     tasknode["stderr"] = %* err
     if err.len > 0:
