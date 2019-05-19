@@ -10,21 +10,71 @@ import strutils
 import streams
 
 
+proc compile(task: string, redis_client: redis.Redis) {.thread.} =
+    let PWD = os.getCurrentDir()
+
+    # Generate binary from code.
+    var tasknode: json.JsonNode = json.parseJson(task)
+    let
+        lang: string = tasknode["language"].getStr
+        code: string = tasknode["code"].getStr
+        uuid: string = tasknode["uuid"].getStr
+    
+    var
+        output: string
+        err: string
+        status: string
+    
+    let BINARY_CHACHE_DIR = PWD & "/worker/" & lang & "/bin_cache"
+    
+    let p: osproc.Process = osproc.startProcess("docker",
+            args=["run", "-i", "-v", BINARY_CHACHE_DIR & ":/bin_cache",
+                  "akapen/" & lang, "build", code, uuid],
+            options={poUsePath}
+        )
+    
+    if p.running:
+        while true:
+            if not p.running:
+                break
+    
+    output = p.outputStream.readAll()
+    err = p.errorStream.readAll()
+    p.close()
+
+    if err.len > 0:
+        status = "CE"
+    
+    tasknode["status"] = %* status
+    tasknode["output"] = %* output
+    tasknode["stderr"] = %* err
+
+    if status == "CE":
+        let redis_result = redis_client.lPush("results", tasknode.pretty)
+    else:
+        let redis_result = redis_client.lPush("run_queue", tasknode.pretty)
+
+
 proc run(task:string, redis_client:redis.Redis) {.thread.} =
+    let PWD = os.getCurrentDir()
+
     ## Running task and return result to redis
     var tasknode: json.JsonNode = json.parseJson(task)
     let
         lang: string = tasknode["language"].getStr
         input: string = tasknode["input"].getStr
-        code: string = tasknode["code"].getStr
+        uuid: string = tasknode["uuid"].getStr
 
     var
         output: string
         err: string
         status: string
+    
+    let BINARY_CHACHE_DIR = PWD & "/worker/" & lang & "/bin_cache"
 
     let p: osproc.Process = osproc.startProcess("docker",
-            args=["run", "-i", "akapen/$#" % [lang], code], 
+            args=["run", "-i", "-v", BINARY_CHACHE_DIR & ":/bin_cache",
+                  "akapen/$#" % [lang], "run", uuid], 
             options={poUsePath}
         )
     p.inputStream.write(input)
@@ -49,7 +99,7 @@ proc run(task:string, redis_client:redis.Redis) {.thread.} =
     tasknode["status"] = %* status
     tasknode["output"] = %* output
     tasknode["stderr"] = %* err
-    let redis_result = redis_client.lPush("taskresults", tasknode.pretty)
+    let redis_result = redis_client.lPush("results", tasknode.pretty)
 
 proc main(): void =
     let redis_client: redis.Redis = redis.open()  # redis client
@@ -58,15 +108,29 @@ proc main(): void =
     setMaxPoolSize(256)
     setMinPoolSize(256)
 
+    var
+        compile_task: redis.RedisString = redis.redisNil
+        run_task: redis.RedisString = redis.redisNil
+
     while true:
-        let task = redis_client.rPop("taskqueue")  # pop task (json)
+        let compile_task = redis_client.rPop("compile_queue")  # pop task (json)
+        let run_task = redis_client.rPop("run_queue")
+
+        # There is no task
+        if compile_task == redis.redisNil and run_task == redis.redisNil:
+            os.sleep(100)
+            continue
+
+        echo "compile_task:\n", compile_task
+        echo "run_task:\n", run_task
+        if compile_task != redis.redisNil:
+            # spawn new compiling thread
+            threadpool.spawn compile(compile_task, redis_client)
         
-        if task != redis.redisNil:
-            # spawn new thread
-            threadpool.spawn run(task, redis_client)
-        else:
-            # if queue is empty, sleep for performance
-            os.sleep(1000)
+        if run_task != redis.redisNil:
+            # spawn new running thread
+            threadpool.spawn run(run_task, redis_client)
+
 
 
 when isMainModule:

@@ -2,6 +2,7 @@
     "user": {
         "id": "abc1234"
     },
+    "uuid": "e8411f06-c3db-436b-8d57-7af03c962b5f",
     "language": "python3",
     "code": "import this",
     "input": "",

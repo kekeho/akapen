@@ -10,4 +10,5 @@ COPY ./requirements.txt /
 # Install Python3
 RUN pip3 install -r /requirements.txt
 
-ENTRYPOINT [ "python3" , "-c"]
+COPY ./entrypoint.sh /
+ENTRYPOINT [ "./entrypoint.sh" ]
