@@ -4,10 +4,8 @@
 import redis
 import os
 import threadpool
-import osproc
 import json
 import strutils
-import streams
 import utils
 
 
@@ -54,27 +52,22 @@ proc run(task:string, redis_client:redis.Redis): void {.thread.} =
         lang: string = tasknode["language"].getStr
         input: string = tasknode["input"].getStr
         uuid: string = tasknode["uuid"].getStr
+        assertion: string = tasknode["assertion"].getStr
 
     var
         output: string
         err: string
-        status: string
-    
+ 
     let BINARY_CACHE_DIR = PWD & "/worker/" & lang & "/bin_cache"
 
     (output, err) = utils.docker_run(@["-i", "-v", BINARY_CACHE_DIR & ":/bin_cache", "akapen/$#" % [lang], "run", uuid], input)
+    let status = utils.get_status(output, err, assertion)
 
-    if err.len != 0:
-        status = "RE"
-    elif output != tasknode["assert"].getStr:
-        status = "WA"
-    else:
-        status = "AC"
-    
     tasknode["status"] = %* status
     tasknode["output"] = %* output
     tasknode["stderr"] = %* err
     let redis_result = redis_client.lPush("results", tasknode.pretty)
+
 
 proc main(): void =
     let redis_client: redis.Redis = redis.open()  # redis client

@@ -2,6 +2,16 @@ import osproc
 import streams
 import sequtils
 
+type status* = enum
+    AC = "AC",  # Accepted
+    WA = "WA",  # Wrong Answer
+    TLE = "TLE",  # Time Limit Exceeded
+    MLE = "MLE",  # Memory Limit Exceeded
+    CE = "CE",  # Compillation Error
+    RE = "RE", # Runtime Error
+    OLE = "OLE", # Output Limit Error
+    JSE = "Server Error"  # Judge server error
+
 
 proc docker_run*(arguments: seq[string], standard_input: string = ""): array[2, string] =
     ## Run docker container with arguments and stdin
@@ -24,4 +34,12 @@ proc docker_run*(arguments: seq[string], standard_input: string = ""): array[2, 
     p.close()
 
     return [output, err]
-    
+
+
+proc get_status*(standard_output: string, standard_error: string, assertion: string): status = 
+    if standard_error.len != 0:
+        result = status.RE
+    elif standard_output != assertion:
+        result = status.WA
+    else:
+        result = status.AC
