@@ -14,30 +14,38 @@ proc compile(task: string, redis_client: redis.Redis): void {.thread.} =
 
     let PWD = os.getCurrentDir()
 
-    var tasknode: json.JsonNode = json.parseJson(task)
-    let
-        lang: string = tasknode["language"].getStr
-        code: string = tasknode["code"].getStr
-        uuid: string = tasknode["uuid"].getStr
-    
+    # Parse json
+    var
+        tasknode: json.JsonNode = json.parseJson(task)
+        lang: string
+        code: string
+        uuid: string
+    try:
+        lang = tasknode["language"].getStr
+        code = tasknode["code"].getStr
+        uuid = tasknode["uuid"].getStr
+    except KeyError:
+        tasknode["status"] = %* utils.status.JSE
+        let redis_result = redis_client.lPush("results", tasknode.pretty)
+        return
+
+    # Compile code
     var
         output: string
         err: string
-        status: string
-    
+        status: utils.status
+
     let BINARY_CACHE_DIR = PWD & "/worker/" & lang & "/bin_cache"
     let args = @["-i", "-v", BINARY_CACHE_DIR & ":/bin_cache", "akapen/" & lang, "build", code, uuid]
-
     (output, err) = utils.docker_run(args)
 
-    if err.len > 0:
-        status = "CE"
-    
+    # Add run queue (or results when CE)
     tasknode["status"] = %* status
     tasknode["output"] = %* output
     tasknode["stderr"] = %* err
-
-    if status == "CE":
+    if err.len > 0:
+        status = utils.status.CE
+    if status == utils.status.CE:
         let redis_result = redis_client.lPush("results", tasknode.pretty)
     else:
         let redis_result = redis_client.lPush("run_queue", tasknode.pretty)
@@ -47,22 +55,32 @@ proc run(task:string, redis_client:redis.Redis): void {.thread.} =
     ## Running task and return result to redis
     let PWD = os.getCurrentDir()
 
-    var tasknode: json.JsonNode = json.parseJson(task)
-    let
-        lang: string = tasknode["language"].getStr
-        input: string = tasknode["input"].getStr
-        uuid: string = tasknode["uuid"].getStr
-        assertion: string = tasknode["assertion"].getStr
+    # Parse json
+    var
+        tasknode: json.JsonNode = json.parseJson(task)
+        lang: string
+        input: string
+        uuid: string
+        assertion: string
+    try:
+        lang = tasknode["language"].getStr
+        input = tasknode["input"].getStr
+        uuid = tasknode["uuid"].getStr
+        assertion = tasknode["assertion"].getStr
+    except KeyError:
+        tasknode["status"] = %* utils.status.JSE
+        let redis_result = redis_client.lPush("results", tasknode.pretty)
+        return
 
+    # Run binary
     var
         output: string
         err: string
- 
     let BINARY_CACHE_DIR = PWD & "/worker/" & lang & "/bin_cache"
-
     (output, err) = utils.docker_run(@["-i", "-v", BINARY_CACHE_DIR & ":/bin_cache", "akapen/$#" % [lang], "run", uuid], input)
     let status = utils.get_status(output, err, assertion)
-
+    
+    # Send result to redis
     tasknode["status"] = %* status
     tasknode["output"] = %* output
     tasknode["stderr"] = %* err

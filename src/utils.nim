@@ -10,7 +10,7 @@ type status* = enum
     CE = "CE",  # Compillation Error
     RE = "RE", # Runtime Error
     OLE = "OLE", # Output Limit Error
-    JSE = "Server Error"  # Judge server error
+    JSE = "JSE"  # Judge server error
 
 
 proc docker_run*(arguments: seq[string], standard_input: string = ""): array[2, string] =
