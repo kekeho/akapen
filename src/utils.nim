@@ -14,9 +14,14 @@ type status* = enum
     JSE = "JSE"  # Judge server error
 
 
-proc docker_run*(arguments: seq[string], standard_input: string = ""): array[2, string] =
+proc docker_run*(arguments: seq[string], standard_input: string = "", memory : string = ""): array[2, string] =
     ## Run docker container with arguments and stdin
-    let p: osproc.Process = osproc.startProcess("docker", args = @["run"]&arguments, options = {poUsePath})
+    var args: seq[string] = @[]
+    if memory != "":
+        args = @["run", "--memory="&memory] & arguments
+    else:
+        args = @["run"] & arguments
+    let p: osproc.Process = osproc.startProcess("docker", args=args, options = {poUsePath})
     
     # stdin
     if standard_input != "":

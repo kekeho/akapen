@@ -62,11 +62,13 @@ proc run(task:string, redis_client:redis.Redis): void {.thread.} =
         input: string
         uuid: string
         assertion: string
+        memory: string
     try:
         lang = tasknode["language"].getStr
         input = tasknode["input"].getStr
         uuid = tasknode["uuid"].getStr
         assertion = tasknode["assertion"].getStr
+        memory = tasknode["memory"].getStr
     except KeyError:
         tasknode["status"] = %* utils.status.JSE
         let redis_result = redis_client.lPush("results", tasknode.pretty)
@@ -77,7 +79,7 @@ proc run(task:string, redis_client:redis.Redis): void {.thread.} =
         output: string
         err: string
     let BINARY_CACHE_DIR = PWD & "/worker/" & lang & "/bin_cache"
-    (output, err) = utils.docker_run(@["-i", "-v", BINARY_CACHE_DIR & '/' & uuid & ":/main.py:ro", "akapen/" & lang & "-run"], input)
+    (output, err) = utils.docker_run(@["-i", "-v", BINARY_CACHE_DIR & '/' & uuid & ":/main.py:ro", "akapen/" & lang & "-run"], input, memory)
     let status = utils.get_status(output, err, assertion)
     
     # Send result to redis
