@@ -77,7 +77,7 @@ proc run(task:string, redis_client:redis.Redis): void {.thread.} =
         output: string
         err: string
     let BINARY_CACHE_DIR = PWD & "/worker/" & lang & "/bin_cache"
-    (output, err) = utils.docker_run(@["-i", "-v", BINARY_CACHE_DIR & '/' & uuid & ":/main.py", "akapen/" & lang & "-run"], input)
+    (output, err) = utils.docker_run(@["-i", "-v", BINARY_CACHE_DIR & '/' & uuid & ":/main.py:ro", "akapen/" & lang & "-run"], input)
     let status = utils.get_status(output, err, assertion)
     
     # Send result to redis
