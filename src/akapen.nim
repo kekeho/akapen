@@ -36,7 +36,7 @@ proc compile(task: string, redis_client: redis.Redis): void {.thread.} =
         status: utils.status
 
     let BINARY_CACHE_DIR = PWD & "/worker/" & lang & "/bin_cache"
-    let args = @["-i", "-v", BINARY_CACHE_DIR & ":/bin_cache", "akapen/" & lang, "build", code, uuid]
+    let args = @["-i", "-v", BINARY_CACHE_DIR & ":/bin_cache", "akapen/" & lang & "-compile", code, uuid]
     (output, err) = utils.docker_run(args)
 
     # Add run queue (or results when CE)
@@ -77,7 +77,7 @@ proc run(task:string, redis_client:redis.Redis): void {.thread.} =
         output: string
         err: string
     let BINARY_CACHE_DIR = PWD & "/worker/" & lang & "/bin_cache"
-    (output, err) = utils.docker_run(@["-i", "-v", BINARY_CACHE_DIR & ":/bin_cache", "akapen/$#" % [lang], "run", uuid], input)
+    (output, err) = utils.docker_run(@["-i", "-v", BINARY_CACHE_DIR & '/' & uuid & ":/main.py", "akapen/" & lang & "-run"], input)
     let status = utils.get_status(output, err, assertion)
     
     # Send result to redis

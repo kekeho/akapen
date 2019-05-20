@@ -7,8 +7,7 @@ FROM python:3.7.3-slim-stretch
 
 COPY ./requirements.txt /
 
-# Install Python3
+# Install lib
 RUN pip3 install -r /requirements.txt
 
-COPY ./entrypoint.sh /
-ENTRYPOINT [ "./entrypoint.sh" ]
+CMD [ "python3", "/main.py" ]
