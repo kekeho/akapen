@@ -2,6 +2,8 @@ import osproc
 import streams
 import sequtils
 import strutils
+import cpuinfo
+import random
 
 type status* = enum
     CD = "Compiled"  # Waiting execute
@@ -15,13 +17,31 @@ type status* = enum
     JSE = "JSE"  # Judge server error
 
 
-proc docker_run*(arguments: seq[string], standard_input: string = "", memory : string = ""): array[3, string] =
+type docker_run_mode* = enum
+    # compile or run
+    COMPILE = 0
+    RUN = 1
+
+
+proc rand_core(): int =
+    randomize()
+    return rand(1..cpuinfo.countProcessors())
+
+
+proc docker_run*(mode: docker_run_mode, arguments: seq[string], standard_input: string = "", memory : string = ""): array[3, string] =
     ## Run docker container with arguments and stdin
-    var args: seq[string] = @[]
+    var args: seq[string] = @["run"]
     if memory != "":
-        args = @["run", "--memory="&memory] & arguments
-    else:
-        args = @["run"] & arguments
+        args &= @["--memory="&memory]
+    
+    if mode == docker_run_mode.RUN:
+        args &= @["--cpuset-cpus=" & rand_core().intToStr]  # Set single core (random)
+        args &= @["--ulimit", "fsize=1000000:1000000"]  # file limit (1MB)
+        args &= @["--pids-limit", "10"]  # Process limit (anti-forkbomb)
+        args &= @["--cpu-period=100000", "--cpu-quota=5000"]  # CPU: 5%
+
+
+    args &= arguments
     let p: osproc.Process = osproc.startProcess("docker", args=args, options = {poUsePath})
     
     # stdin
