@@ -64,12 +64,16 @@ proc run(task:string, redis_client:redis.Redis): void {.thread.} =
         uuid: string
         assertion: string
         memory: string
+        time: int  # nanosec
+
     try:
         lang = tasknode["language"].getStr
         input = tasknode["input"].getStr
         uuid = tasknode["uuid"].getStr
         assertion = tasknode["assertion"].getStr
         memory = tasknode["memory"].getStr
+        time = tasknode["time"].getStr.parseInt
+        echo time, " :time"
     except KeyError:
         tasknode["status"] = %* utils.status.JSE
         let redis_result = redis_client.lPush("results", tasknode.pretty)
@@ -80,15 +84,17 @@ proc run(task:string, redis_client:redis.Redis): void {.thread.} =
         output: string
         err: string
         exit_status: string
+        exec_time: string
     let BINARY_CACHE_DIR = PWD & "/worker/" & lang & "/bin_cache"
     let arg = @["-i", "-v", BINARY_CACHE_DIR & '/' & uuid & ":/main.py:ro", "akapen/" & lang & "-run"]
-    (output, err, exit_status) = utils.docker_run(utils.docker_run_mode.RUN, arg, input, memory)
-    let status = utils.get_status(output, err, assertion)
+    (output, err, exit_status, exec_time) = utils.docker_run(utils.docker_run_mode.RUN, arg, input, memory, time)
+    let status = utils.get_status(output, err, assertion, time, exec_time.parseInt)
     
     # Send result to redis
     tasknode["status"] = %* status
     tasknode["output"] = %* output
     tasknode["stderr"] = %* err
+    tasknode["exec_time"] = %* exec_time
     let redis_result = redis_client.lPush("results", tasknode.pretty)
 
 
