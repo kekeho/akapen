@@ -1,6 +1,7 @@
 import osproc
 import streams
 import sequtils
+import strutils
 
 type status* = enum
     CD = "Compiled"  # Waiting execute
@@ -14,7 +15,7 @@ type status* = enum
     JSE = "JSE"  # Judge server error
 
 
-proc docker_run*(arguments: seq[string], standard_input: string = "", memory : string = ""): array[2, string] =
+proc docker_run*(arguments: seq[string], standard_input: string = "", memory : string = ""): array[3, string] =
     ## Run docker container with arguments and stdin
     var args: seq[string] = @[]
     if memory != "":
@@ -28,10 +29,7 @@ proc docker_run*(arguments: seq[string], standard_input: string = "", memory : s
         p.inputStream.write(standard_input)
         p.inputStream.close()
     
-    if p.running:
-        while true:
-            if not p.running:
-                break
+    let exit_status: string = p.waitForExit().intToStr
     
     # stdout, stderr
     let output = p.outputStream.readAll()
@@ -39,7 +37,7 @@ proc docker_run*(arguments: seq[string], standard_input: string = "", memory : s
 
     p.close()
 
-    return [output, err]
+    return [output, err, exit_status]
 
 
 proc get_status*(standard_output: string, standard_error: string, assertion: string): status = 
