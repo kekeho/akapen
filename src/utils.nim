@@ -5,7 +5,6 @@ import strutils
 import cpuinfo
 import random
 import os
-from math import pow
 import json
 
 type status* = enum
@@ -82,6 +81,7 @@ proc docker_run*(mode: docker_run_mode, uuid: string,arguments: seq[string], sta
     
     var exec_time: uint64 = 0
     if mode == docker_run_mode.RUN:
+        # Container exec time (from docker inspect)
         let (inspect_str, status) = osproc.execCmdEx("docker inspect " & uuid)
         if status != 0:
             # Can"t get inpect info from docker engine
