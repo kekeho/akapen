@@ -25,7 +25,7 @@ type docker_run_mode* = enum
 
 proc rand_core(): int =
     randomize()
-    return rand(1..cpuinfo.countProcessors())
+    return rand(0..cpuinfo.countProcessors()-1)
 
 
 proc docker_run*(mode: docker_run_mode, arguments: seq[string], standard_input: string = "", memory : string = ""): array[3, string] =
