@@ -5,8 +5,8 @@ import strutils
 import cpuinfo
 import random
 import os
-import times
 from math import pow
+import json
 
 type status* = enum
     CD = "Compiled"  # Waiting execute
@@ -31,27 +31,34 @@ proc rand_core(): int =
     return rand(0..cpuinfo.countProcessors()-1)
 
 
-proc interval_to_nanosec(interval: times.TimeInterval): int64 =
-    var nanosec: int64 = interval.nanoseconds
-    nanosec += interval.microseconds * 10.0.pow(3.0).int
-    nanosec += interval.milliseconds * 10.0.pow(6.0).int
-    nanosec += interval.seconds * 10.0.pow(9.0).int
-    nanosec += interval.minutes * 10.0.pow(9.0).int * 60
-    nanosec += interval.hours * 10.0.pow(9.0).int * 3600
-    nanosec += interval.days * 10.0.pow(9.0).int * 3600 * 24
-    nanosec += interval.weeks * 10.0.pow(9.0).int * 3600 * 24 * 7
-    nanosec += interval.months * 10.0.pow(9.0).int * 3600 * 24 * 7 * 31
-    nanosec += interval.years * 10.0.pow(9.0).int * 3600 * 24 * 7 * 31 * 12
-    return nanosec
+proc nanosec_delta(started_at: string, finished_at: string): uint64 =
+    ## docker times format
+    var nano_times: array[2, uint64]
+    for i, t in [started_at, finished_at]:
+        let date: seq[string] = t.split("T")[0].split("-")
+        let time: seq[string] = t.split("T")[1].split(":")
+        let
+            year: uint64 = date[0].parseUInt
+            month: uint64 = date[1].parseUInt
+            day: uint64 = date[2].parseUInt
+            hours: uint64 = time[0].parseUInt
+            minitues: uint64 = time[1].parseUInt
+            seconds: float64 = time[2][0..^2].parseFloat
+    
+        nano_times[i] = cast[uint64]((seconds * 1.0e+9).toInt) + (minitues * 6e+10.toInt) + (hours * 3.6e+12.toInt) + (day * 8.64e+13.toInt) + (month * 2.628e+15.toInt) + (year * 31.536e+15.toInt)
+    
+    return nano_times[1] - nano_times[0]
 
+    
 
-proc docker_run*(mode: docker_run_mode, arguments: seq[string], standard_input: string = "", memory : string = "", nanosec: int = -1): array[4, string] =
+proc docker_run*(mode: docker_run_mode, uuid: string,arguments: seq[string], standard_input: string = "", memory : string = "", nanosec: int = -1): array[4, string] =
     ## Run docker container with arguments and stdin
     var args: seq[string] = @["run"]
     if memory != "":
         args &= @["--memory="&memory]
     
     if mode == docker_run_mode.RUN:
+        args &= @["--name=" & uuid]
         args &= @["--cpuset-cpus=" & rand_core().intToStr]  # Set single core (random)
         args &= @["--ulimit", "fsize=1000000:1000000"]  # file limit (1MB)
         args &= @["--pids-limit", "10"]  # Process limit (anti-forkbomb)
@@ -59,7 +66,6 @@ proc docker_run*(mode: docker_run_mode, arguments: seq[string], standard_input: 
 
     args &= arguments
     let p: osproc.Process = osproc.startProcess("docker", args=args, options = {poUsePath})
-    let start_time: times.TimeInterval = getTime().toTimeInterval
 
     # stdin
     if standard_input != "":
@@ -67,7 +73,6 @@ proc docker_run*(mode: docker_run_mode, arguments: seq[string], standard_input: 
         p.inputStream.close()
     
     let exit_status: string = p.waitForExit().intToStr
-    let end_time: times.TimeInterval = getTime().toTimeInterval
     
     # stdout, stderr
     let output = p.outputStream.readAll()
@@ -75,7 +80,17 @@ proc docker_run*(mode: docker_run_mode, arguments: seq[string], standard_input: 
 
     p.close()
     
-    let exec_time: int64 = (end_time - start_time).interval_to_nanosec
+    var exec_time: uint64 = 0
+    if mode == docker_run_mode.RUN:
+        let (inspect_str, status) = osproc.execCmdEx("docker inspect " & uuid)
+        if status != 0:
+            # Can"t get inpect info from docker engine
+            return [output, "Can't get inspect info from docker engine", $status, $(-1)]
+        let inspect: json.JsonNode = parseJson(inspect_str)[0]
+        let start_time : string = inspect["State"]["StartedAt"].getStr
+        let finish_time: string = inspect["State"]["FinishedAt"].getStr
+        exec_time = nanosec_delta(start_time, finish_time)
+
     return [output, err, exit_status, $exec_time]
 
 
