@@ -5,3 +5,10 @@ services:
     image: redis
     ports:
       - 6379:6379
+  
+  judge:
+    build: .
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
+    depends_on:
+      - kvs

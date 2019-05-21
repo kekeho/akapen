@@ -99,7 +99,7 @@ proc run(task:string, redis_client:redis.Redis): void {.thread.} =
 
 
 proc main(): void =
-    let redis_client: redis.Redis = redis.open()  # redis client
+    let redis_client: redis.Redis = redis.open(host="kvs")  # redis client
 
     # set pool size
     setMaxPoolSize(256)
