@@ -84,7 +84,7 @@ Now, just supported only python3.
 
 - python3
     version: 3.7.3
-    dockerfile: [compile](worker/python3/compile/Dockerfile) | [run](worker/python3/compile/Dockerfile)
+    dockerfile: [compile](worker/python3/compile/Dockerfile) | [run](worker/python3/run/Dockerfile)
 
 ## Details of the judge container
 
