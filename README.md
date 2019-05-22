@@ -78,7 +78,7 @@ Now, just supported only `AC`, `WA`, `RE`, `TLE`, `Compiled`, `JSE`
 |    WA    |      Wrong Answer     |
 |    RE    |     Runtime Error     |
 |   TLE    |  Time Limit Exceeded  |
-| Compiled | Memory Limit Exceeded |
+| Compiled |        Compiled       |
 |   JSE    |   Judge server Error  |
 
 ## Support language
