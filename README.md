@@ -2,6 +2,8 @@
 
 Tiny judge server. docker based.
 
+Master: ![Master branch build status](https://travis-ci.org/kekeho/akapen.svg?branch=master)  Debelop: ![Develop branch build status](https://travis-ci.org/kekeho/akapen.svg?branch=develop)
+
 ## Overview
 
 akapen is judge server for competitive programming.
