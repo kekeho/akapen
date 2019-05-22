@@ -2,7 +2,7 @@
 
 Tiny judge server. docker based.
 
-Master: ![Master branch build status](https://travis-ci.org/kekeho/akapen.svg?branch=master)  Debelop: ![Develop branch build status](https://travis-ci.org/kekeho/akapen.svg?branch=develop)
+Master: [![Build Status](https://travis-ci.org/kekeho/akapen.svg?branch=master)](https://travis-ci.org/kekeho/akapen)  Debelop: [![Build Status](https://travis-ci.org/kekeho/akapen.svg?branch=develop)](https://travis-ci.org/kekeho/akapen)
 
 ## Overview
 
