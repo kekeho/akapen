@@ -16,7 +16,8 @@ just type 4 commands.
 ```sh
 git clone https://github.com/kekeho/akapen
 cd akapen
-docker-compose build  # build
+docker-compose build  # build akapen
+sh build-worker.sh  # build worker containers
 ```
 
 ## Boot
