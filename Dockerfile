@@ -16,8 +16,10 @@ ENV PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin:/Nim-0.19.
 # Build akapen
 RUN mkdir /akapen
 RUN mkdir /akapen/src
+RUN mkdir /akapen/tests
 COPY akapen.nimble /akapen
 COPY src /akapen/src
+COPY tests /akapen/tests
 WORKDIR /akapen
 RUN nimble update
 RUN nimble install redis
