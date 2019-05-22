@@ -6,6 +6,8 @@ import cpuinfo
 import random
 import os
 import json
+import oids
+import unittest
 
 type status* = enum
     CD = "Compiled"  # Waiting execute
@@ -104,3 +106,84 @@ proc get_status*(standard_output: string, standard_error: string, assertion: str
         result = status.WA
     else:
         result = status.AC
+
+
+proc test*(): void =
+    suite "utils test":
+        echo "=== testing utils.nim ==="
+        test "proc rand_core":
+            # Random test
+            let cpu_core_count = cpuinfo.countProcessors()
+            echo "CPU cores: ", cpu_core_count
+            for i in 0..30:
+                # if cpu_core_count == 4, rand_core must within 0..3
+                check(rand_core() < cpu_core_count)
+
+
+        test "proc nanosec_delta":
+            # Docker inspect format
+            let start_time1 = "2019-05-21T17:46:42.666852086Z"
+            let finished_time1 = "2019-05-21T17:46:43.666422086Z"
+            check(nanosec_delta(start_time1, finished_time1) == 999570000)
+
+            let start_time2 = "2019-05-21T17:46:42.666852086Z"
+            let finished_time2 = "2019-05-21T18:57:43.666422086Z"
+            check(nanosec_delta(start_time2, finished_time2) == cast[uint64](4260999570000))
+
+        
+        let uuid_python3 = oids.genOid()
+        let exit_status_python3 = 198
+        test "proc docker_run (Compile mode) in python3":
+            let lang = "python3"
+            let PWD = os.getCurrentDir()
+            let BINARY_CACHE_DIR = PWD & "/worker/" & lang & "/bin_cache"
+            let code = "print(input()); exit(" & $exit_status_python3 & ")"
+            let args = @["-i", "-v", BINARY_CACHE_DIR & ":/bin_cache", "akapenjudge/" & lang & ":compile", code, $uuid_python3]
+            var
+                output: string
+                err: string
+                exit_status: string
+                exec_time: string
+            (output, err, exit_status, exec_time) = docker_run(docker_run_mode.COMPILE, $uuid_python3, args)
+
+            check(output == "")
+            check(err == "")
+            check(exit_status == "0")
+            check(exec_time == "0")
+        
+
+        test "proc docker_run (Run mode) in python3":
+            let lang = "python3"
+            let PWD = os.getCurrentDir()
+            let BINARY_CACHE_DIR = PWD & "/worker/" & lang & "/bin_cache"
+            let arg = @["-i", "-v", BINARY_CACHE_DIR & '/' & $uuid_python3 & ":/main.py:ro", "akapenjudge/" & lang & ":run"]
+            let input = "Hello, python3"
+            let memory = "10M"
+            let time = 100000000
+            var
+                output: string
+                err: string
+                exit_status: string
+                exec_time: string
+
+            (output, err, exit_status, exec_time) = utils.docker_run(docker_run_mode.RUN, $uuid_python3, arg, input, memory, time)
+            
+            check(output == input & "\n")
+            check(err == "")
+            check(exit_status == $exit_status_python3)
+        
+
+        test "proc get_status":
+            let re1: status = get_status("", "error", "", 100000, 1000)
+            let re2: status =  get_status("abc", "error", "abc", 10000, 9999)
+            let re3: status = get_status("abc", "error", "abc", 1000, 9999)
+            let tle: status = get_status("ab", "", "", 1000, 9999)
+            let wa: status = get_status("hello", "", "abc", 1000, 999)
+            let ac: status = get_status("hello", "", "hello", 1000, 999)
+
+            check(re1 == status.RE)
+            check(re2 == status.RE)
+            check(re3 == status.RE)
+            check(tle == status.TLE)
+            check(wa == status.WA)
+            check(ac == status.AC)
