@@ -67,7 +67,7 @@ Judge results will appear on redis `results` list.
 
 ## Status
 
-Now, just only support `AC`, `WA`, `RE`, `TLE`, `Compiled`, `JSE`
+Now, just supported only `AC`, `WA`, `RE`, `TLE`, `Compiled`, `JSE`
 
 |  status  |          detail       |
 |  :----:  |          :----:       |
@@ -88,12 +88,12 @@ Now, just supported only python3.
 
 ## Details of the judge container
 
-- CPU limit
+- CPU limit  
     1 judge container can use **single core**, **5%** of all (cpu-period=100000, cpu-quota=5000)
-- Offline
-- PIDs limit
+- Offline  
+- PIDs limit  
     10 (anti fork-bomb)
-- Time info
+- Time info  
     exec_time gets from docker inspect (StartedAt, FinishedAt)
 
 ## Test
