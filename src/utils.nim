@@ -189,3 +189,25 @@ proc test*(): void =
             check(tle == status.TLE)
             check(wa == status.WA)
             check(ac == status.AC)
+        
+        
+        test "container offline check":
+            let lang = "python3"
+            let PWD = os.getCurrentDir()
+            let BINARY_CACHE_DIR = PWD & "/worker/" & lang & "/bin_cache"
+            # get globalip info (should fail)
+            let code: string = "import urllib.request; html = urllib.request.urlopen('http://globalip.me').read(); print(html)"
+            let arg = @["-i", "akapenjudge/" & lang & ":run", "python3", "-c", code]
+            let input = ""
+            let memory = "10M"
+            let time = 100000000
+            var
+                output: string
+                err: string
+                exit_status: string
+                exec_time: string
+
+            (output, err, exit_status, exec_time) = utils.docker_run(docker_run_mode.RUN, $oids.genOid(), arg, input, memory, time)
+            let error_string: string = "urllib.error.URLError: <urlopen error [Errno -3] Temporary failure in name resolution>"
+            check(err.split("\n")[^2] == error_string)  # failure in name resolution
+            check(exit_status == "1")
