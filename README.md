@@ -94,7 +94,8 @@ Now, just supported only python3.
 - PIDs limit  
     10 (anti fork-bomb)
 - Time info  
-    exec_time gets from docker inspect (StartedAt, FinishedAt)
+    exec_time gets from docker inspect (StartedAt, FinishedAt)  
+    In akapen, the unit of time is nanoseconds
 
 ## Test
 
