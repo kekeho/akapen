@@ -4,7 +4,7 @@ service: docker
 
 before_install:
   - docker-compose build
-  - docker run kvs
+  - docker-compose run kvs
 
 script:
   - docker-compose run judge nimble test
