@@ -65,6 +65,8 @@ proc docker_run*(mode: docker_run_mode, uuid: string,arguments: seq[string], sta
         args &= @["--pids-limit", "10"]  # Process limit (anti-forkbomb)
         args &= @["--cpu-period=100000", "--cpu-quota=5000"]  # CPU: 5%
 
+    args &= @["--net", "none"]  # Offline
+
     args &= arguments
     let p: osproc.Process = osproc.startProcess("docker", args=args, options = {poUsePath})
 
