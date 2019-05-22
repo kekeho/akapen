@@ -97,7 +97,7 @@ proc docker_run*(mode: docker_run_mode, uuid: string,arguments: seq[string], sta
 proc get_status*(standard_output: string, standard_error: string, assertion: string, time: int, exec_time: int): status = 
     if standard_error.len != 0:
         result = status.RE
-    if exec_time > time:
+    elif exec_time > time:
         echo exec_time, " ", time
         result = status.TLE
     elif standard_output != assertion:
